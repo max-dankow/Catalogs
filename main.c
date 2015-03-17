@@ -14,6 +14,12 @@ int process_file(char *path)
     char ch;
     FILE *current_file = fopen(path, "r");
 
+    if (current_file == NULL)
+    {
+        fprintf(stderr, "Can't open file: %s\n", path);
+        return;
+    }
+
     while(1)
     {
         ch=fgetc(current_file);
@@ -51,10 +57,7 @@ void tabulation(int number)
     {
         printf("|    ");
     }
-    //printf("-> ");
 }
-
-void process_catalog(char *path, int level, int deep, int link_flag);
 
 void analise_entry(char *path, char *entry_name, int level, int deep, int link_flag)
 {
@@ -126,8 +129,10 @@ void process_catalog(char *path, int level, int deep, int link_flag)
     {
         entry = readdir(current_dir);
 
-        if (entry == NULL && errno == 0)
+        if (entry == NULL)
+        {
             break;
+        }
 
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
         {
