@@ -155,6 +155,7 @@ int main(int argc, char **argv)
 
     int deep = -1, link_flag = 1;
     int current_arg_index = 2;
+
     while (current_arg_index < argc)
     {
         if (strcmp(argv[current_arg_index], "-s") == 0)
@@ -183,6 +184,7 @@ int main(int argc, char **argv)
                 fprintf(stderr, "Wrong input.\n");
                 return 1;
             }
+
             continue;
         }
         else
@@ -191,6 +193,7 @@ int main(int argc, char **argv)
             return 1;
         }
     }
+
     process_catalog(argv[1], 0, deep, link_flag);
     return 0;
 }
