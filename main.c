@@ -22,12 +22,12 @@ int process_file(char *path)
 
     while(1)
     {
-        ch=fgetc(current_file);
+        ch = fgetc(current_file);
 
         if (!((ch >= '0' && ch <='9') ||
-            (ch >= 'a' && ch <='z') ||
-            (ch >= 'A' && ch <='Z') ||
-            (ch =='_')))
+              (ch >= 'a' && ch <='z') ||
+              (ch >= 'A' && ch <='Z') ||
+              (ch =='_')))
         {
             if (last != 0)
             {
@@ -51,7 +51,7 @@ int process_file(char *path)
     return count;
 }
 
-void tabulation(int number)
+void print_tabulation(int number)
 {
     for (int i = 0; i < number;  ++i)
     {
@@ -59,7 +59,7 @@ void tabulation(int number)
     }
 }
 
-void analise_entry(char *path, char *entry_name, int level, int deep, int link_flag)
+void analise_entry(char *path, char *entry_name, int level, int max_deep, int link_flag)
 {
     struct stat entry_info;
     char entry_path[PATH_MAX + 1];
@@ -71,14 +71,14 @@ void analise_entry(char *path, char *entry_name, int level, int deep, int link_f
         return;
     }
 
-    tabulation(level);
+    print_tabulation(level);
 
     if (S_ISDIR(entry_info.st_mode))
     {
         printf("\033[32m%s (DIR)\033[0m\n", entry_name);
 
-        if (level + 1 < deep || deep == 0)
-            process_catalog(entry_path, level + 1, deep, link_flag);
+        if (level + 1 < max_deep || max_deep == 0)
+            process_catalog(entry_path, level + 1, max_deep, link_flag);
     }
 
     if (S_ISREG(entry_info.st_mode))
@@ -98,7 +98,7 @@ void analise_entry(char *path, char *entry_name, int level, int deep, int link_f
             if(readlink(entry_path, target_name, PATH_MAX ) != -1)
             {
                 printf( "\033[31m -> %s\033[0m\n", target_name);
-                analise_entry(path, target_name, level, deep, link_flag);
+                analise_entry(path, target_name, level, max_deep, link_flag);
             }
             else
             {
@@ -113,7 +113,7 @@ void analise_entry(char *path, char *entry_name, int level, int deep, int link_f
     }
 }
 
-void process_catalog(char *path, int level, int deep, int link_flag)
+void process_catalog(char *path, int level, int max_deep, int link_flag)
 {
     DIR *current_dir = opendir(path);
 
@@ -139,7 +139,7 @@ void process_catalog(char *path, int level, int deep, int link_flag)
             continue;
         }
 
-        analise_entry(path, entry->d_name, level, deep, link_flag);
+        analise_entry(path, entry->d_name, level, max_deep, link_flag);
     }
 
     closedir(current_dir);
@@ -153,7 +153,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    int deep = -1, link_flag = 1;
+    int max_deep = -1, link_flag = 1;
     int current_arg_index = 2;
 
     while (current_arg_index < argc)
@@ -164,6 +164,7 @@ int main(int argc, char **argv)
             current_arg_index++;
             continue;
         }
+
         if (strcmp(argv[current_arg_index], "-r") == 0)
         {
             if (current_arg_index + 1 >= argc)
@@ -173,7 +174,7 @@ int main(int argc, char **argv)
             }
 
             char *err_ptr = argv[current_arg_index + 1];
-            deep = strtod(argv[current_arg_index + 1], &err_ptr);
+            max_deep = strtod(argv[current_arg_index + 1], &err_ptr);
 
             if (strcmp(err_ptr, "") == 0)
             {
@@ -194,7 +195,7 @@ int main(int argc, char **argv)
         }
     }
 
-    process_catalog(argv[1], 0, deep, link_flag);
+    process_catalog(argv[1], 0, max_deep, link_flag);
     return 0;
 }
 
