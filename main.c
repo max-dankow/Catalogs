@@ -1,12 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <dirent.h>
-#include <errno.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <linux/limits.h>
+#include "Hash-Table.h"
+
+static const int LINK_NONE = 0;
+static const int LINK_ALWAYS = 1;
+static const int LINK_ONCE = 2;
+
 
 int process_file(char *path)
 {
@@ -17,7 +22,7 @@ int process_file(char *path)
     if (current_file == NULL)
     {
         fprintf(stderr, "Can't open file: %s\n", path);
-        return;
+        return -1;
     }
 
     while(1)
@@ -59,11 +64,34 @@ void print_tabulation(int number)
     }
 }
 
-void analise_entry(char *path, char *entry_name, int level, int max_deep, int link_flag)
+void analise_entry(char *path, char *entry_name, int level,
+                   int max_deep, int link_flag, struct Table **visited)
 {
     struct stat entry_info;
     char entry_path[PATH_MAX + 1];
+
     sprintf(entry_path, "%s/%s", path, entry_name);
+
+    if (link_flag == LINK_ONCE)
+    {
+        char *real_path = malloc(PATH_MAX + 1);
+
+        if (realpath(entry_path, real_path) == NULL)
+        {
+            fprintf(stderr, "Can't get real path: %s\n", entry_path);
+            return;
+        }
+
+        void *ptr;
+
+        if (link_flag == LINK_ONCE && find_element(*visited, real_path, ptr) == 0)
+        {
+            printf("\033[35mFile was already processed:\n%s\033[0m\n", real_path);
+            return;
+        }
+
+        *visited = add_element(*visited, real_path, NULL);
+    }
 
     if (lstat(entry_path, &entry_info) != 0)
     {
@@ -78,7 +106,7 @@ void analise_entry(char *path, char *entry_name, int level, int max_deep, int li
         printf("\033[32m%s (DIR)\033[0m\n", entry_name);
 
         if (level + 1 < max_deep || max_deep == 0)
-            process_catalog(entry_path, level + 1, max_deep, link_flag);
+            process_catalog(entry_path, level + 1, max_deep, link_flag, visited);
     }
 
     if (S_ISREG(entry_info.st_mode))
@@ -91,14 +119,14 @@ void analise_entry(char *path, char *entry_name, int level, int max_deep, int li
     {
         printf("\033[31m%s (LINK)\033[0m", entry_name);
 
-        if (link_flag == 1)
+        if (link_flag != LINK_NONE)
         {
             char target_name[PATH_MAX + 1];
 
             if(readlink(entry_path, target_name, PATH_MAX ) != -1)
             {
                 printf( "\033[31m -> %s\033[0m\n", target_name);
-                analise_entry(path, target_name, level, max_deep, link_flag);
+                analise_entry(path, target_name, level, max_deep, link_flag, visited);
             }
             else
             {
@@ -113,7 +141,8 @@ void analise_entry(char *path, char *entry_name, int level, int max_deep, int li
     }
 }
 
-void process_catalog(char *path, int level, int max_deep, int link_flag)
+void process_catalog(char *path, int level, int max_deep,
+                     int link_flag, struct Table **visited)
 {
     DIR *current_dir = opendir(path);
 
@@ -139,7 +168,7 @@ void process_catalog(char *path, int level, int max_deep, int link_flag)
             continue;
         }
 
-        analise_entry(path, entry->d_name, level, max_deep, link_flag);
+        analise_entry(path, entry->d_name, level, max_deep, link_flag, visited);
     }
 
     closedir(current_dir);
@@ -153,14 +182,33 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    int max_deep = -1, link_flag = 1;
+    int max_deep = -1, link_flag = LINK_ALWAYS;
     int current_arg_index = 2;
 
     while (current_arg_index < argc)
     {
         if (strcmp(argv[current_arg_index], "-s") == 0)
         {
-            link_flag = 0;
+            if (link_flag != LINK_ALWAYS)
+            {
+                fprintf(stderr, "Wrong parameters.\n");
+                return 1;
+            }
+
+            link_flag = LINK_NONE;
+            current_arg_index++;
+            continue;
+        }
+
+        if (strcmp(argv[current_arg_index], "-c") == 0)
+        {
+            if (link_flag != LINK_ALWAYS)
+            {
+                fprintf(stderr, "Wrong parameters.\n");
+                return 1;
+            }
+
+            link_flag = LINK_ONCE;
             current_arg_index++;
             continue;
         }
@@ -195,7 +243,10 @@ int main(int argc, char **argv)
         }
     }
 
-    process_catalog(argv[1], 0, max_deep, link_flag);
+    struct Table *visited_entry = create_table(100, 73);
+    process_catalog(argv[1], 0, max_deep, link_flag, &visited_entry);
+    dispose_table(&visited_entry, 1);
+    printf("All done. Success.\n");
     return 0;
 }
 
