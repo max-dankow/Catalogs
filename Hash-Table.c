@@ -121,9 +121,9 @@ Table *add_element(Table *table, const char *key, const void *new_value_ptr)
     return rehash(table);
 }
 
-int find_element(Table *table, const char *key, void *dst)
+int find_element(Table *table, const char *key, void **dst)
 {
-    dst = NULL;
+    *dst = NULL;
 
     if (table == NULL)
         return -1;
@@ -136,11 +136,11 @@ int find_element(Table *table, const char *key, void *dst)
 
     if (inz == NULL)
     {
-        dst = NULL;
+        *dst = NULL;
         return -1;
     }
 
-    dst = inz->value_ptr;
+    *dst = inz->value_ptr;
     return 0;
 }
 

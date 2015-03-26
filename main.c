@@ -84,7 +84,7 @@ void analise_entry(char *path, char *entry_name, int level,
 
         void *ptr;
 
-        if (link_flag == LINK_ONCE && find_element(*visited, real_path, ptr) == 0)
+        if (link_flag == LINK_ONCE && find_element(*visited, real_path, &ptr) == 0)
         {
             printf("\033[35mFile was already processed:\n%s\033[0m\n", real_path);
             return;
